@@ -1,5 +1,7 @@
 taxiVehicle = nil
 taxiPed = nil
+taxiHailed = false
+inTaxi = false
 
 RegisterCommand('taxi', function()
     local playerPed = PlayerPedId()
@@ -7,6 +9,7 @@ RegisterCommand('taxi', function()
     local vehicleName = GetHashKey('taxi')
     local taxiDriver = GetHashKey('s_m_o_busker_01')
     local Px, Py, Pz = table.unpack(GetEntityCoords(playerPed))
+    taxiHailed = true
 
     RequestModel(vehicleName)
     RequestModel(taxiDriver)
@@ -37,6 +40,7 @@ RegisterCommand('taxi', function()
     TaskVehicleDriveToCoord(taxiPed, taxiVehicle, Px, Py, Pz, 26.0, 0, GetEntityModel(taxiVehicle), 411, 10.0)
     SetPedKeepTask(driver, true)
 
+    -- These need to be set after the taxi arrives
     -- SetEntityAsNoLongerNeeded(taxiVehicle)
     -- SetModelAsNoLongerNeeded(vehicleName)
     -- SetEntityAsNoLongerNeeded(taxiPed)
@@ -50,25 +54,29 @@ end, false)
 CreateThread(function()
     while true do
         Wait(0)
-        local playerPed = PlayerPedId()
-        if not DoesEntityExist(taxiVehicle) then
-            if not IsPedInAnyVehicle(playerPed, false) or not IsPedInAnyTaxi(playerPed) then
-                if IsControlJustPressed(0, 168) then
+        if taxiHailed then
+            local playerPed = PlayerPedId()
+            if not DoesEntityExist(taxiVehicle) then
+                if not IsPedInAnyVehicle(playerPed, false) or not IsPedInAnyTaxi(playerPed) then
+                    if IsControlJustPressed(0, 168) then
+                    end
                 end
-            end
-        else
-            Px, Py, Pz = table.unpack(GetEntityCoords(playerPed))
-            vehX, vehY, vehZ = table.unpack(GetEntityCoords(taxiVeh))
-            DistanceBetweenTaxi = GetDistanceBetweenCoords(Px, Py, Pz, vehX, vehY, vehZ, true)
-            if DistanceBetweenTaxi <= 20.0 then
-                if not IsPedInAnyVehicle(playerPed, false) then
-                    if IsControlJustPressed(0, 23) then
-                        TaskEnterVehicle(playerPed, taxiVeh, -1, 2, 1.0, 1, 0)
-                        PlayerEntersTaxi = true
-                        TaxiInfoTimer = GetGameTimer()
+            else
+                Px, Py, Pz = table.unpack(GetEntityCoords(playerPed))
+                vX, vY, vZ = table.unpack(GetEntityCoords(taxiVeh))
+                local DistanceBetweenTaxi = GetDistanceBetweenCoords(Px, Py, Pz, vX, vY, vZ, true)
+                if DistanceBetweenTaxi <= 20.0 then
+                    if not IsPedInAnyVehicle(playerPed, false) then
+                        if IsControlJustPressed(0, 23) then
+                            TaskEnterVehicle(playerPed, taxiVeh, -1, 2, 1.0, 1, 0)
+                            inTaxi = true
+                            TaxiInfoTimer = GetGameTimer()
+                        end
                     end
                 end
             end
+        else
+            Wait(1000)
         end
     end
 end, false)

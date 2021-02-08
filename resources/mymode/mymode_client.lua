@@ -1,5 +1,6 @@
 
-local spawnPos = vector3(282.5254, -345.319, 44.91988)
+-- local spawnPos = vector3(282.5254, -345.319, 44.91988)
+local spawnPos = vector3(893.1422, -134.7816, 77.32869)
 local Keys = {
     ['X'] = 73
 }
@@ -69,6 +70,13 @@ RegisterCommand('pos', function(source, args)
         args = { '' .. pos .. ''}
     })
 end, false)
+
+RegisterCommand('head', function()
+    local head = GetEntityHeading(PlayerPedId())
+    TriggerEvent('chat:addMessage', {
+        args = { head }
+    })
+end)
 
 RegisterCommand('autodrive', function(source, args)
     local playerPed = PlayerPedId()
