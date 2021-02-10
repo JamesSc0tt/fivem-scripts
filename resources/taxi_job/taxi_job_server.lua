@@ -4,17 +4,31 @@
 RegisterServerEvent('taxi_job:rentCab')
 AddEventHandler('taxi_job:rentCab', function(distance)
     --config.rentalPrice
-    --remove money
+    --remove money from player
 end)
 
 RegisterServerEvent('taxi_job:returnCab')
 AddEventHandler('taxi_job:returnCab', function(distance)
     --config.returnPrice
-    --add money
+    --add money to player
+end)
+
+RegisterServerEvent('taxi_job:signOn')
+AddEventHandler('taxi_job:signOn', function()
+    -- add user to job database to receive player calls
+end)
+
+RegisterServerEvent('taxi_job:signOff')
+AddEventHandler('taxi_job:signOff', function()
+    -- remove user to job database to receive player calls
 end)
 
 RegisterServerEvent('taxi_job:success')
 AddEventHandler('taxi_job:success', function(distance)
-    local payment = math.ceil(distance * config.pricePerMile * config.priceMultiplier)
+    local tip = math.random(config.payment.tip.min, config.payment.tip.max)
+    local payment = math.min(math.ceil((distance/config.milesConversion) * config.payment.pricePerMile * config.payment.priceMultiplier), config.payment.max) + tip
+    TriggerClientEvent('chat:addMessage', {
+        args = { 'Total Payment: ' .. payment }
+    })
     --pay player
 end)

@@ -12,17 +12,42 @@
 --     vector3(-109.9, -605.6, 36.2)
 -- }
 config = {
-	rentalPrice = 250.0,
-	returnPrice = 100.0,
 	drawDistance = 10.0,
-	pricePerMile = 1.0,
-	priceMultiplier = 1.0,
+	payment = {
+		min = 100,
+		max = 400,
+		pricePerMile = 100.0,
+		priceMultiplier = 1.0,
+		tip = { min = 50, max = 100 }
+	},
+	job = {
+		rate = 0.02,
+		curve = 1.4,
+		freq = { min = 25000, max = 40000 },
+		dropSpeed = 5.0,
+		idle = 10000,
+		rentalPrice = 250,
+		returnPrice = 150
+	},
+	milesConversion = 1400,
 	jobRate = 0.02,
 	rateCurve = 1.4,
 	frequency = 30000,
 	dropOffSpeed = 5.0,
-	vehicles = {
+	authorizedVehicles = {
 		'taxi'
+	},
+	markers = {
+		pickup = {
+			size = { x = 0.5, y = 0.5, z = 0.5 },
+			color = { r = 204, g = 204, b = 0 },
+			type = 0, rotate = false, bounce = true
+		},
+		dropoff = {
+			size = { x = 5.0, y = 5.0, z = 0.5 },
+			color = { r = 204, g = 204, b = 0 },
+			type = 23, rotate = false, bounce = false
+		}
 	},
 	zones = {
 		jobSite = {
@@ -37,16 +62,6 @@ config = {
 			type = -1, rotate = false,
 			heading = 324.33
 
-		},
-		pickup = {
-			size = { x = 0.5, y = 0.5, z = 0.5 },
-			color = { r = 204, g = 204, b = 0 },
-			type = 0, rotate = false, bounce = true
-		},
-		dropoff = {
-			size = { x = 5.0, y = 5.0, z = 0.5 },
-			color = { r = 204, g = 204, b = 0 },
-			type = 23, rotate = false, bounce = false
 		}
 	},
 	peds = {

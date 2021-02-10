@@ -63,12 +63,14 @@ end
 
 function startJob()
     inService = true
+    TriggerServerEvent('taxi_job:signOn')
     log('You are now a cab driver!')
 end
 
 function endJob()
     -- once the job ends, reset everything to default and kick out a customer if you had one
     inService = false
+    TriggerServerEvent('taxi_job:signOff')
     log('You\'ve clocked off!')
     RemoveBlip(customerBlip)
     RemoveBlip(destinationBlip)
@@ -81,13 +83,23 @@ function endJob()
     customerBlip, destinationBlip, customer, taxi = nil, nil, nil, nil
 end
 
+function isPlayerTaxi()
+    -- logic to check if player owned vehicle
+
+    return false
+end
+
 RegisterCommand('taxistart', function()
     -- Make this only work if taxi is player owned?
     local playerPed = PlayerPedId()
-    if IsPedInAnyTaxi(playerPed) then
+    if IsPedInAnyTaxi(playerPed)then
         if not inService then
             taxi = GetVehiclePedIsIn(playerPed, false)
-            startJob()
+            if isPlayerTaxi(taxi) then
+                startJob()
+            else
+                log('This command only works in an owned taxi')
+            end
         else
             log('You\'re already in service...')
         end
@@ -99,7 +111,11 @@ end)
 RegisterCommand('taxistop', function()
     -- Make this only work if taxi is player owned?
     if inService then
-        endJob()
+        if isPlayerTaxi(taxi) then
+            endJob()
+        else
+            log('This command only works in an owned taxi')
+        end
     else
         log('You need to be in service to use this command')
     end
@@ -125,12 +141,23 @@ AddEventHandler('taxi_job:enteredMarker', function(zone)
     -- cab plate number
     -- show prompt
     if not IsPedSittingInAnyVehicle(PlayerPedId()) then
+        SetTextFont(0)
+        SetTextProportional(1)
+        SetTextScale(0.0, 0.3)
+        SetTextColour(128, 128, 128, 255)
+        SetTextDropshadow(0, 0, 0, 0, 255)
+        SetTextEdge(1, 0, 0, 0, 255)
+        SetTextDropShadow()
+        SetTextOutline()
+        SetTextEntry('STRING')
         if taxi == nil then
+            AddTextComponentString('E to rent a cab (-$' .. config.job.rentalPrice .. ')')
             if IsControlJustPressed(0, 38) then
                 spawnTaxi(zone)
                 startJob()
             end
         else
+            AddTextComponentString('E to return a cab ($' .. config.job.returnPrice .. ')' .. '\nH to rent another (-$' .. config.job.rentalPrice .. ')')
             if IsControlJustPressed(0, 38) then
                 -- check if nearby first
                 DeleteVehicle(taxi)
@@ -140,6 +167,7 @@ AddEventHandler('taxi_job:enteredMarker', function(zone)
                 spawnTaxi(zone)
             end
         end
+        DrawText(0.87, 0.01)
     end
 end)
 
@@ -163,6 +191,7 @@ CreateThread(function()
             if distance < v.size.x then
                 inMarker, currentZone = true, k
                 TriggerEvent('taxi_job:enteredMarker', config.zones.vSpawn)
+                
             else
                 inMarker = false
                 currentZone = nil
@@ -181,7 +210,7 @@ end)
 -- main thread for job functions
 CreateThread(function()
     local distance = 0.0
-    local spawnAttempts = 0
+    local spawnAttempts, nextAttemptTime = 0, 0
     local cX, cY, cZ = nil
     local dX, dY, dZ = nil
 
@@ -194,33 +223,49 @@ CreateThread(function()
         if inService then
             -- show job status message
 
-            if not hasCustomer then
-                -- add job chance and frequency here
-                Wait(math.random(25000, 40000))
-                spawnChance = config.jobRate * (config.rateCurve^spawnAttempts)
-                log('Chance to spawn is ' .. spawnChance * 100 .. '%')
-                if math.random(1, 1000) > math.floor(spawnChance * 1000) then
-                    spawnAttempts = spawnAttempts + 1
-                    log('Attempt # ' .. spawnAttempts)
-                    local nextAttemptTime = math.random(25000, 40000)
-                    log('Trying to spawn in ~' .. nextAttemptTime .. 'ms')
-                    Wait(nextAttemptTime)
-                else
-                    spawnAttempts = 0
-                    customer = spawnCustomer()
-                    customerBlip = AddBlipForEntity(customer)
-                    SetBlipSprite (customerBlip, 198)
-                    SetBlipDisplay(customerBlip, 4)
-                    SetBlipScale  (customerBlip, 0.75)
-                    SetBlipColour (customerBlip, 2)
-                    SetBlipAsShortRange(customerBlip, true)
-                    SetBlipRoute(customerBlip, true)
-                    SetEntityAsMissionEntity(customer, true, false)
-                    ClearPedTasksImmediately(customer)
-                    SetBlockingOfNonTemporaryEvents(customer, true)
-                    hasCustomer = true
+            if taxi ~= nil and not IsPedSittingInVehicle(playerPed, taxi) then
+                -- end job when out of vehicle too long and maybe instantly when too far
+                local timer = GetGameTimer() + config.job.idle
+                log('Ending job in ' .. config.job.idle)
+                while not IsPedSittingInVehicle(playerPed, taxi) do
+                    Wait(0)
+                    if GetGameTimer() >= timer then
+                        endJob()
+                        break
+                    end
                 end
-
+            elseif not hasCustomer then
+                -- Wait(math.random(25000, 40000))
+                if nextAttemptTime == 0 then
+                    nextAttemptTime = GetGameTimer() + math.random(config.job.freq.min, config.job.freq.max)
+                end
+                if GetGameTimer() >= nextAttemptTime then
+                    spawnChance = config.jobRate * (config.rateCurve^spawnAttempts)
+                    log('Chance to spawn is ' .. spawnChance * 100 .. '%')
+                    if math.random(1, 1000) > math.floor(spawnChance * 1000) then
+                        nextAttemptTime = GetGameTimer() + math.random(config.job.freq.min, config.job.freq.max)
+                        spawnAttempts = spawnAttempts + 1
+                        log('Attempt # ' .. spawnAttempts)
+                        -- nextAttemptTime = math.random(config.job.freq.min, config.job.freq.max)
+                        log('Trying to spawn in ~' .. nextAttemptTime .. 'ms')
+                        -- Wait(nextAttemptTime)
+                    else
+                        spawnAttempts = 0
+                        nextAttemptTime = 0
+                        customer = spawnCustomer()
+                        customerBlip = AddBlipForEntity(customer)
+                        SetBlipSprite (customerBlip, 198)
+                        SetBlipDisplay(customerBlip, 4)
+                        SetBlipScale  (customerBlip, 0.75)
+                        SetBlipColour (customerBlip, 2)
+                        SetBlipAsShortRange(customerBlip, true)
+                        SetBlipRoute(customerBlip, true)
+                        SetEntityAsMissionEntity(customer, true, false)
+                        ClearPedTasksImmediately(customer)
+                        SetBlockingOfNonTemporaryEvents(customer, true)
+                        hasCustomer = true
+                    end
+                end
             else
                 local pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
                 cX, cY, cZ = table.unpack(GetEntityCoords(customer))
@@ -241,7 +286,7 @@ CreateThread(function()
 
                     -- marker above ped head
                     if  distanceToPed < 50.0 and distanceToPed > 10.01 then
-                        local pickup = config.zones.pickup
+                        local pickup = config.markers.pickup
                         DrawMarker(0, cX, cY, cZ + 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                         pickup.size.x, pickup.size.y, pickup.size.z, pickup.color.r, pickup.color.g, pickup.color.b, 100,
                         pickup.bounce, false, 2, pickup.rotate, nil, nil, false)
@@ -264,13 +309,12 @@ CreateThread(function()
                     end
                 else
                     if IsPedSittingInVehicle(customer, taxi) then
-                        -- If customer has gotten in the vehicle
-
                         local distanceToDestination = CalculateTravelDistanceBetweenPoints(pX, pY, pZ, dX, dY, dZ)
 
+                        -- We only want to create the blip once, otherwise it won't actually show
                         if destinationBlip == nil then
-                            -- We only want to create the blip once, otherwise it won't actually show
                             local pedDesination = createDestination()
+                            -- make sure we don't grab the same point
                             while CalculateTravelDistanceBetweenPoints(pX, pY, pZ, dX, dY, dZ) == 0.0 do
                                 pedDesination = createDestination()
                             end
@@ -285,13 +329,12 @@ CreateThread(function()
                             SetBlipRoute(destinationBlip, true)
 
                             -- set total job distance in here since this is only called once per job
-                            -- TODO: Convert to miles
                             distance = math.ceil(distanceToDestination)
                         end
 
                         -- marker at destination
                         if  distanceToDestination < 50.0 then
-                            local dropoff = config.zones.dropoff
+                            local dropoff = config.markers.dropoff
                             DrawMarker(23, dX, dY, dZ - 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                             dropoff.size.x, dropoff.size.y, dropoff.size.z, dropoff.color.r, dropoff.color.g, dropoff.color.b, 100,
                             dropoff.bounce, false, 2, dropoff.rotate, nil, nil, false)
