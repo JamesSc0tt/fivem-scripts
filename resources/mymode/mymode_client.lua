@@ -62,15 +62,6 @@ RegisterCommand('car', function(source, args)
 	})
 end, false)
 
-RegisterCommand('pos', function(source, args)
-    local playerPed = PlayerPedId()
-    local pos = GetEntityCoords(playerPed)
-
-    TriggerEvent('chat:addMessage', {
-        args = { '' .. pos .. ''}
-    })
-end, false)
-
 RegisterCommand('head', function()
     local head = GetEntityHeading(PlayerPedId())
     TriggerEvent('chat:addMessage', {
