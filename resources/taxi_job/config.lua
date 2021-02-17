@@ -25,7 +25,7 @@ config = {
 		curve = 1.4,
 		freq = { min = 25000, max = 40000 },
 		dropSpeed = 5.0,
-		idle = 120000,
+		idle = 10000,
 		rentalPrice = 250,
 		returnPrice = 150
 	},

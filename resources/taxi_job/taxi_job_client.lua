@@ -41,10 +41,6 @@ function kickOutFare(customer, speed)
     end
 end
 
-function customerDied()
-    log('Your customer has died. Please find another')
-end
-
 function spawnTaxi(zone)
     local vehicleName = 'taxi'
     wasTaxiRented = true
@@ -215,7 +211,7 @@ end)
 -- main thread for job functions
 CreateThread(function()
     local distance = 0.0
-    local spawnAttempts, nextAttemptTime = 0, 0
+    local spawnAttempts, nextAttemptTime, timer = 0, 0, 0
     local destVect
 
     while true do 
@@ -229,17 +225,23 @@ CreateThread(function()
 
             if taxi ~= nil and not IsPedSittingInVehicle(playerPed, taxi) then
                 -- end job when out of vehicle too long and maybe instantly when too far
-                local timer = GetGameTimer() + config.job.idle
-                log('Ending job in ' .. config.job.idle)
-                while not IsPedSittingInVehicle(playerPed, taxi) do
-                    Wait(0)
-                    if GetGameTimer() >= timer then
-                        endJob()
-                        break
+                local taxiDistance = #(GetEntityCoords(playerPed) - GetEntityCoords(taxi))
+                if taxiDistance >= 30.0 then
+                    Wait(500)
+                    if timer == 0.0 then
+                        timer = GetGameTimer() + config.job.idle
                     end
+                    log('Ending job in ' .. config.job.idle)
+                    if not IsPedSittingInVehicle(playerPed, taxi) then
+                        if GetGameTimer() >= timer or taxiDistance >= 100.0 then
+                            endJob()
+                            break
+                        end
+                    end
+                else
+                    timer = 0.0
                 end
             elseif not hasCustomer then
-                -- Wait(math.random(25000, 40000))
                 if nextAttemptTime == 0 then
                     nextAttemptTime = GetGameTimer() + math.random(config.job.freq.min, config.job.freq.max)
                 end
@@ -250,9 +252,7 @@ CreateThread(function()
                         nextAttemptTime = GetGameTimer() + math.random(config.job.freq.min, config.job.freq.max)
                         spawnAttempts = spawnAttempts + 1
                         log('Attempt # ' .. spawnAttempts)
-                        -- nextAttemptTime = math.random(config.job.freq.min, config.job.freq.max)
                         log('Trying to spawn in ~' .. nextAttemptTime .. 'ms')
-                        -- Wait(nextAttemptTime)
                     else
                         spawnAttempts = 0
                         nextAttemptTime = 0
