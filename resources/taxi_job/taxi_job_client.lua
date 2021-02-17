@@ -223,6 +223,27 @@ CreateThread(function()
         if inService then
             -- show job status message
 
+            -- check for customer or player death
+            -- TODO: end when player dies outside of cab
+            if (customer ~= nil and IsPedDeadOrDying(customer)) or IsPedDeadOrDying(playerPed) then
+                if IsPedDeadOrDying(playerPed) then
+                    if IsPedSittingInVehicle(customer, taxi) then
+                        TaskLeaveVehicle(customer, taxi, 0)
+                    end
+                    endJob()
+                else
+                    log('Your customer has died. Please find another')
+                end
+                SetEntityAsMissionEntity(customer, false, true)
+                SetEntityAsNoLongerNeeded(customer)
+                RemoveBlip(destinationBlip)
+                RemoveBlip(customerBlip)
+                distance = 0.0
+                isEntering, hasCustomer = false, false
+                customer, customerBlip, destinationBlip = nil, nil, nil
+                Wait(10000)
+            end
+
             if taxi ~= nil and not IsPedSittingInVehicle(playerPed, taxi) then
                 -- end job when out of vehicle too long and maybe instantly when too far
                 local taxiDistance = #(GetEntityCoords(playerPed) - GetEntityCoords(taxi))
@@ -273,18 +294,7 @@ CreateThread(function()
             else
                 local taxiVect = GetEntityCoords(taxi)
                 local custVect = GetEntityCoords(customer)
-
-                if IsPedFatallyInjured(customer) then
-                    customerDied()
-                    SetEntityAsMissionEntity(customer, false, true)
-                    SetEntityAsNoLongerNeeded(customer)
-                    RemoveBlip(destinationBlip)
-                    RemoveBlip(customerBlip)
-                    distance = 0.0
-                    isEntering, hasCustomer = false, false
-                    customer, customerBlip, destinationBlip = nil, nil, nil
-                    Wait(10000)
-                end
+                
                 if not IsPedSittingInVehicle(customer, taxi) then
                     local distanceToPed = #(taxiVect - custVect)
 
