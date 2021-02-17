@@ -69,6 +69,10 @@ RegisterCommand('head', function()
     })
 end)
 
+RegisterCommand('door', function(source, args)
+    SetVehicleDoorOpen(GetVehiclePedIsIn(PlayerPedId(), false), tonumber(args[1]), false, false)
+end)
+
 RegisterCommand('autodrive', function(source, args)
     local playerPed = PlayerPedId()
     local vehicle = GetVehiclePedIsIn(playerPed)

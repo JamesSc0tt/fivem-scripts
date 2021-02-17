@@ -25,7 +25,9 @@ function customerGetOutAtStop(customer, speed)
     if speed <= config.dropOffSpeed then
         -- wait a bit so player can some to full stop
         Wait(2000)
-        TaskLeaveVehicle(customer, taxi, 64)
+        TaskLeaveVehicle(customer, taxi, 0)
+        Wait(1000)
+        SetVehicleDoorShut(taxi, 3, false)
     end
 end
 
