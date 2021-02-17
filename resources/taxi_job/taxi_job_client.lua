@@ -224,7 +224,6 @@ CreateThread(function()
             -- show job status message
 
             -- check for customer or player death
-            -- TODO: end when player dies outside of cab
             if (customer ~= nil and IsPedDeadOrDying(customer)) or IsPedDeadOrDying(playerPed) then
                 if IsPedDeadOrDying(playerPed) then
                     if IsPedSittingInVehicle(customer, taxi) then
