@@ -2,13 +2,13 @@
     This holds all the server events for the taxi job. I've left it stubbed out so you can add your own service calls
 ]]
 RegisterServerEvent('taxi_job:rentCab')
-AddEventHandler('taxi_job:rentCab', function(distance)
+AddEventHandler('taxi_job:rentCab', function()
     --config.rentalPrice
     --remove money from player
 end)
 
 RegisterServerEvent('taxi_job:returnCab')
-AddEventHandler('taxi_job:returnCab', function(distance)
+AddEventHandler('taxi_job:returnCab', function()
     --config.returnPrice
     --add money to player
 end)
@@ -24,11 +24,10 @@ AddEventHandler('taxi_job:signOff', function()
 end)
 
 RegisterServerEvent('taxi_job:success')
-AddEventHandler('taxi_job:success', function(distance)
+AddEventHandler('taxi_job:success', function()
     local tip = math.random(config.payment.tip.min, config.payment.tip.max)
-    local payment = math.min(math.ceil((distance/config.milesConversion) * config.payment.pricePerMile * config.payment.priceMultiplier), config.payment.max) + tip
+    local payment = math.random(config.payment.min, config.payment.max)
     TriggerClientEvent('chat:addMessage', {
         args = { 'Total Payment: ' .. payment }
     })
-    --pay player
 end)

@@ -60,6 +60,24 @@ function log(args)
     })
 end
 
+function showMessage(args)
+    -- show message in middle of screen
+end
+
+function showPrompt(args)
+    -- show interaction prompt
+    SetTextFont(0)
+    SetTextProportional(1)
+    SetTextScale(0.0, 0.3)
+    SetTextColour(128, 128, 128, 255)
+    SetTextDropshadow(0, 0, 0, 0, 255)
+    SetTextEdge(1, 0, 0, 0, 255)
+    SetTextDropShadow()
+    SetTextOutline()
+    SetTextEntry('STRING')
+    AddTextComponentString(args)
+end
+
 function startJob()
     inService = true
     TriggerServerEvent('taxi_job:signOn')
@@ -135,32 +153,24 @@ RegisterCommand('rejectfare', function()
 end)
 
 AddEventHandler('taxi_job:enteredMarker', function(zone)
-    -- spawn taxi if at stand
     -- give vehicle a random decent fuel level
-    -- cab plate number
-    -- show prompt
     if zone == 'JobSite' then
         if not IsPedSittingInAnyVehicle(PlayerPedId()) then
-            SetTextFont(0)
-            SetTextProportional(1)
-            SetTextScale(0.0, 0.3)
-            SetTextColour(128, 128, 128, 255)
-            SetTextDropshadow(0, 0, 0, 0, 255)
-            SetTextEdge(1, 0, 0, 0, 255)
-            SetTextDropShadow()
-            SetTextOutline()
-            SetTextEntry('STRING')
             if taxi == nil then
-                AddTextComponentString('E to rent a cab (-$' .. config.job.rentalPrice .. ')')
+                showPrompt('E to rent a cab (-$' .. config.job.rentalPrice .. ')')
                 if IsControlJustPressed(0, 38) then
                     spawnTaxi(config.zones.VehicleSpawner)
                     startJob()
                 end
             else --if not playerowned
-                AddTextComponentString('E to return a cab ($' .. config.job.returnPrice .. ')' .. '\nH to rent another (-$' .. config.job.rentalPrice .. ')')
+                showPrompt('E to return a cab ($' .. config.job.returnPrice .. ')' .. '\nH to rent another (-$' .. config.job.rentalPrice .. ')')
                 if IsControlJustPressed(0, 38) then
                     -- check if nearby first
-                    DeleteVehicle(taxi)
+                    if #(GetEntityCoords(PlayerPedId()) - - GetEntityCoords(taxi)) then
+                        DeleteVehicle(taxi)
+                    else
+                        -- no taxi to return 
+                    end
                     TriggerServerEvent('taxi_job:returnCab')
                     endJob()
                 elseif IsControlJustPressed(0, 74) then
@@ -196,15 +206,11 @@ CreateThread(function()
             else
                 inMarker = false
                 currentZone = nil
-                -- log("moved out of zone")
             end
         end
         if sleep then
             Wait(500)
         end
-        -- spawn vehicle from cirle
-        -- return vehicle at circle if one has been pulled
-        -- allow to pull another if yours has been lost, but no money back
     end
 end)
 
@@ -359,8 +365,7 @@ CreateThread(function()
                             dropoff.bounce, false, 2, dropoff.rotate, nil, nil, false)
 
                             if distanceToDestination < 5.0 and speed < config.dropOffSpeed then
-                                log('Total job distance: ' .. distance)
-                                TriggerServerEvent('taxi_job:success', distance)
+                                TriggerServerEvent('taxi_job:success')
                                 customerGetOutAtStop(customer, speed)
                                 SetEntityAsNoLongerNeeded(customer)
                                 RemoveBlip(destinationBlip)
