@@ -26,8 +26,6 @@ end)
 RegisterServerEvent('taxi_job:success')
 AddEventHandler('taxi_job:success', function()
     local tip = math.random(config.payment.tip.min, config.payment.tip.max)
-    local payment = math.random(config.payment.min, config.payment.max)
-    TriggerClientEvent('chat:addMessage', {
-        args = { 'Total Payment: ' .. payment }
-    })
+    local payment = math.random(config.payment.min, config.payment.max) + tip
+    TriggerClientEvent('taxi_job:updateStatus', source, 'Success', true, { payment })
 end)
