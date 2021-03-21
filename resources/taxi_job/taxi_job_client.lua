@@ -2,19 +2,6 @@ local hasAlreadyEnteredMarker, inService, hasCustomer, wasTaxiRented, isEntering
 local taxi, customer, customerBlip, destinationBlip, targetBlip, currentAction, currentStatus = nil, nil, nil, nil, nil, nil, nil
 local speed = 0.0
 
-function spawnCustomer()
-    local pedLocation = config.locations[math.random(1, #config.locations)]
-    log('New ped at ' .. pedLocation)
-    local ped = config.peds[math.random(1, #config.peds)]
-    RequestModel(ped)
-    while not HasModelLoaded(ped) do
-        Wait(200)
-    end
-
-
-    return CreatePed(26, ped, pedLocation.x, pedLocation.y, pedLocation.z, pedLocation.w, false, false)
-end
-
 function getCustomer(playerPed)
     local ped = getRandomPed(GetEntityCoords(playerPed))
     while ped == nil do
@@ -350,7 +337,6 @@ CreateThread(function()
                     else
                         spawnAttempts = 0
                         nextAttemptTime = 0
-                        -- customer = spawnCustomer()
                         customer = getCustomer(playerPed)
                         customerBlip = AddBlipForEntity(customer)
                         SetBlipSprite (customerBlip, 480)
