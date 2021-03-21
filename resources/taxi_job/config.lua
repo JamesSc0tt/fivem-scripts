@@ -15,7 +15,7 @@ config = {
 	drawDistance = 10.0,
 	payment = {
 		min = 50,
-		max = 200,
+		max = 150,
 		pricePerMile = 100.0,
 		priceMultiplier = 1.0,
 		tip = { min = 50, max = 100 }
@@ -27,14 +27,12 @@ config = {
 		dropSpeed = 5.0,
 		idle = 10000,
 		rentalPrice = 250,
-		returnPrice = 150
+		returnPrice = 150,
+		searchDistance = 300.0,
+		minDistance = 500.0,
+		maxDistance = 3000.0
 	},
 	milesConversion = 1400,
-	jobRate = 0.02,
-	rateCurve = 1.4,
-	frequency = 30000,
-	dropOffSpeed = 5.0,
-	minimumDistance = 10.0,
 	authorizedVehicles = {
 		'taxi'
 	},
@@ -45,9 +43,9 @@ config = {
 			type = 0, rotate = false, bounce = true
 		},
 		dropoff = {
-			size = { x = 5.0, y = 5.0, z = 0.5 },
+			size = { x = 5.0, y = 5.0, z = 2.0 },
 			color = { r = 204, g = 204, b = 0 },
-			type = 23, rotate = false, bounce = false
+			type = 1, rotate = false, bounce = false
 		}
 	},
 	zones = {

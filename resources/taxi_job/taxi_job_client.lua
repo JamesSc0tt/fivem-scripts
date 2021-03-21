@@ -15,6 +15,33 @@ function spawnCustomer()
     return CreatePed(26, ped, pedLocation.x, pedLocation.y, pedLocation.z, pedLocation.w, false, false)
 end
 
+function getCustomer(playerPed)
+    local ped = getRandomPed(GetEntityCoords(playerPed))
+    while ped == nil do
+        log('cannot find a nearby ped. searching again')
+        Wait(30000)
+        ped = getRandomPed(GetEntityCoords(playerPed))
+    end
+    return ped
+end
+
+function getRandomPed(playerCoords)
+    local search = {}
+    local searchDistance = config.job.searchDistance
+
+    for i=1, 250, 1 do
+        local ped = GetRandomPedAtCoord(playerCoords.x, playerCoords.y, playerCoords.z, searchDistance, searchDistance, searchDistance, 26)
+        if DoesEntityExist(ped) and IsPedHuman(ped) and IsPedWalking(ped) and not IsPedAPlayer(ped) then
+            table.insert(search, ped)
+        end
+    end
+
+    if #search > 0 then
+		return search[GetRandomIntInRange(1, #search)]
+	end
+    
+end
+
 function createDestination()
     local pedDesination = config.locations[math.random(1, #config.locations)]
     log('New destination at ' .. pedDesination)
@@ -22,7 +49,7 @@ function createDestination()
 end
 
 function customerGetOutAtStop(customer, speed)
-    if speed <= config.dropOffSpeed then
+    if speed <= config.job.dropSpeed then
         -- wait a bit so player can some to full stop
         Wait(2000)
         TaskLeaveVehicle(customer, taxi, 0)
@@ -32,7 +59,7 @@ function customerGetOutAtStop(customer, speed)
 end
 
 function kickOutFare(customer, speed)
-    if speed <= config.dropOffSpeed then
+    if speed <= config.job.dropSpeed then
         TaskLeaveVehicle(customer, taxi, 256)
     else
         -- this should cause them to roll out of the car
@@ -313,7 +340,7 @@ CreateThread(function()
                     nextAttemptTime = GetGameTimer() + math.random(config.job.freq.min, config.job.freq.max)
                 end
                 if GetGameTimer() >= nextAttemptTime then
-                    spawnChance = config.jobRate * (config.rateCurve^spawnAttempts)
+                    spawnChance = config.job.rate * (config.job.curve^spawnAttempts)
                     -- spawnChance = 1
                     log('Chance to spawn is ' .. spawnChance * 100 .. '%')
                     if math.random(1, 1000) > math.floor(spawnChance * 1000) then
@@ -323,9 +350,10 @@ CreateThread(function()
                     else
                         spawnAttempts = 0
                         nextAttemptTime = 0
-                        customer = spawnCustomer()
+                        -- customer = spawnCustomer()
+                        customer = getCustomer(playerPed)
                         customerBlip = AddBlipForEntity(customer)
-                        SetBlipSprite (customerBlip, 198)
+                        SetBlipSprite (customerBlip, 480)
                         SetBlipDisplay(customerBlip, 4)
                         SetBlipScale  (customerBlip, 0.75)
                         SetBlipColour (customerBlip, 2)
@@ -348,7 +376,7 @@ CreateThread(function()
                     -- marker above ped head
                     if  distanceToPed < 50.0 and distanceToPed > 5.01 then
                         local pickup = config.markers.pickup
-                        DrawMarker(0, custVect.x, custVect.y, custVect.z + 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                        DrawMarker(pickup.type, custVect.x, custVect.y, custVect.z + 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                         pickup.size.x, pickup.size.y, pickup.size.z, pickup.color.r, pickup.color.g, pickup.color.b, 100,
                         pickup.bounce, false, 2, pickup.rotate, nil, nil, false)
                     end
@@ -378,7 +406,7 @@ CreateThread(function()
                             destVect = createDestination()
                             distanceToDestination = #(taxiVect - vector3(destVect.x, destVect.y, destVect.z))
                             -- make sure we don't grab the same point or a point that's too close
-                            while distanceToDestination <= config.minimumDistance do
+                            while distanceToDestination <= config.job.minDistance or distanceToDestination >= config.job.maxDistance do
                                 Citizen.Wait(5)
                                 destVect = createDestination()
                                 distanceToDestination = #(taxiVect - vector3(destVect.x, destVect.y, destVect.z))
@@ -398,11 +426,11 @@ CreateThread(function()
                         -- marker at destination
                         if  distanceToDestination ~= nil and distanceToDestination < 50.0 then
                             local dropoff = config.markers.dropoff
-                            DrawMarker(23, destVect.x, destVect.y, destVect.z - 0.4, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                            DrawMarker(dropoff.type, destVect.x, destVect.y, destVect.z - 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                             dropoff.size.x, dropoff.size.y, dropoff.size.z, dropoff.color.r, dropoff.color.g, dropoff.color.b, 100,
                             dropoff.bounce, false, 2, dropoff.rotate, nil, nil, false)
 
-                            if distanceToDestination < 5.0 and speed < config.dropOffSpeed then
+                            if distanceToDestination < 5.0 and speed < config.job.dropSpeed then
                                 TriggerServerEvent('taxi_job:success')
                                 customerGetOutAtStop(customer, speed)
                                 SetEntityAsNoLongerNeeded(customer)
