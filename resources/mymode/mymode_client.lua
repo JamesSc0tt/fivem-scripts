@@ -80,6 +80,18 @@ RegisterCommand('autodrive', function(source, args)
     TaskVehicleDriveWander(playerPed, vehicle, 20.0, 536871299)
 end, false)
 
+RegisterCommand('tp', function(source, args)
+    local waypoint = GetFirstBlipInfoId(8)
+   
+    if DoesBlipExist(waypoint) then
+        local waypointCoord = GetBlipInfoIdCoord(waypoint)
+        local trash, z = GetGroundZFor_3dCoord(waypointCoord.x, waypointCoord.y, waypointCoord.z + 99999.0, 1)
+        SetEntityCoords(PlayerPedId(), vector3(waypointCoord.x + .0, waypointCoord.y + .0, z + .0))
+    else 
+        -- waypoint isn't set
+    end
+end, false)
+
 CreateThread(function()
     while true do
         Wait(0)

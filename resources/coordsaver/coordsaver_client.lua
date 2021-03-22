@@ -2,9 +2,8 @@
 RegisterNetEvent("SaveCommand")
 AddEventHandler("SaveCommand", function()
     x, y, z = table.unpack(GetEntityCoords(GetPlayerPed(-1), true))
-    h = GetEntityHeading(GetPlayerPed(-1))
     
-    TriggerServerEvent("SaveCoords", tonumber(string.format("%.1f", x)) , tonumber(string.format("%.1f", y)) , tonumber(string.format("%.1f", z)), tonumber(string.format("%.1f", h)))			
+    TriggerServerEvent("SaveCoords", tonumber(string.format("%.1f", x)) , tonumber(string.format("%.1f", y)) , tonumber(string.format("%.1f", z)))			
 end)
 
 RegisterCommand("savepos", function()

@@ -1,9 +1,9 @@
 
 RegisterServerEvent('SaveCoords')
-AddEventHandler('SaveCoords', function(x, y, z, h )
+AddEventHandler('SaveCoords', function(x, y, z)
  file = io.open(GetPlayerName(source) .. '-Coords.txt', 'a')
     if file then
-        file:write('vector4(' .. x .. ',' .. y .. ',' .. z .. ',' .. h .. '),\n')
+        file:write('vector3(' .. x .. ',' .. y .. ',' .. z .. '),\n')
     end
     file:close()
 end)
