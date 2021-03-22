@@ -29,12 +29,6 @@ function getRandomPed(playerCoords)
     
 end
 
-function createDestination()
-    local pedDesination = config.locations[math.random(1, #config.locations)]
-    log('New destination at ' .. pedDesination)
-    return pedDesination
-end
-
 function table.copy(org)
     return {table.unpack(org)}
 end
@@ -394,10 +388,8 @@ CreateThread(function()
                         -- We only want to create the blip once, otherwise it won't actually show
                         if destinationBlip == nil then
                             local tempTable = table.copy(config.locations)
-                            destVect = config.locations[math.random(1, #config.locations)]
-                            distanceToDestination = #(taxiVect - destVect)
                             -- make sure we don't grab the same point or a point that's too close
-                            while distanceToDestination <= config.job.minDistance or distanceToDestination >= config.job.maxDistance do
+                            while destVect == nil or distanceToDestination <= config.job.minDistance or distanceToDestination >= config.job.maxDistance do
                                 Citizen.Wait(5)
                                 if (#tempTable ~= 0) then
                                     local pos = math.random(1, #tempTable)
@@ -437,7 +429,7 @@ CreateThread(function()
                                 SetEntityAsNoLongerNeeded(customer)
                                 RemoveBlip(destinationBlip)
                                 isEntering, hasCustomer = false, false
-                                customer, customerBlip, destinationBlip = nil, nil, nil
+                                customer, customerBlip, destinationBlip, destVect = nil, nil, nil, nil
                                 Wait(5000)
                             end
                         end

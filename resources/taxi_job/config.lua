@@ -1,16 +1,21 @@
 --[[
-	This is the config for the taxi job. You can add job sites and spawns,
-	as well as editing other properties, such as:
+	This is the config for the taxi job. The job spawn chance is an exponentail curve
+	that should hit near 100% chance at 12 attempts. You can affect the amount of time
+	it takes on average to find a job by either changing the time between attempts or
+	adjusting the rate curve. 
+	You can add job sites and spawns, as well as editing other properties, such as:
 	job rate
 	job curve
 	job check frequency
 	payout  per mile
 	payout multiplier
+
+	********NOTE ON EDITING SPAWN CHANCES********
+	Remember, THIS IS EXPONENTIAL, so small tweaks will make drastic changes. If you want
+	to change this, you can check wolfram alpha using the lim as x -> 12 with the current
+	formula to see the current curve. Tweak the curve there to get what you want first.
+	Make changes by 0.01 intervals
 ]]
--- customerLocations = {
---     vector3(59.2, -275.9, 47.4),
---     vector3(-109.9, -605.6, 36.2)
--- }
 config = {
 	drawDistance = 10.0,
 	payment = {
@@ -63,18 +68,9 @@ config = {
 
 		}
 	},
-	peds = {
-		's_m_o_busker_01',
-		'a_f_o_ktown_01',
-		'a_f_y_tourist_01',
-		'a_f_y_vinewood_04',
-		'a_m_m_fatlatin_01',
-		'a_m_m_prolhost_01'
-	},
-	--I'm using the esx list for now
 	locations = {
-		vector4(243.7,-667.4,38.2,76.8),
-		vector4(255.7,-379.5,44.7,347.8)
+		vector3(243.7,-667.4,38.2),
+		vector3(255.7,-379.5,44.7)
 	}
 	-- mine
 	-- locations = {
