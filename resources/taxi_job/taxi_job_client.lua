@@ -347,6 +347,7 @@ CreateThread(function()
                         ClearPedTasksImmediately(customer)
                         SetBlockingOfNonTemporaryEvents(customer, true)
                         hasCustomer = true
+                        log(#(GetEntityCoords(taxi) - GetEntityCoords(customer)) .. ' units to ped')
                     end
                 end
             else
@@ -358,14 +359,14 @@ CreateThread(function()
                     TriggerEvent('taxi_job:updateStatus', 'PickUp', true)
 
                     -- marker above ped head
-                    if  distanceToPed < 50.0 and distanceToPed > 5.01 then
+                    if  distanceToPed < 50.0 and distanceToPed > config.job.pickUpDistance + 0.01 then
                         local pickup = config.markers.pickup
                         DrawMarker(pickup.type, custVect.x, custVect.y, custVect.z + 1.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                         pickup.size.x, pickup.size.y, pickup.size.z, pickup.color.r, pickup.color.g, pickup.color.b, 100,
                         pickup.bounce, false, 2, pickup.rotate, nil, nil, false)
                     end
 
-                    if distanceToPed < 5.0 then
+                    if distanceToPed <= config.job.pickUpDistance then
                         -- this section is to stop the customer from hunting the cab
                         -- if you move out of the distance, but attempt to get back
                         -- in if you get back in range
@@ -404,6 +405,7 @@ CreateThread(function()
                                 end
                             end
                             log('New destination at ' .. destVect)
+                            log(distanceToDestination .. ' units to destination')
                             RemoveBlip(customerBlip)
                             destinationBlip = AddBlipForCoord(destVect.x, destVect.y, destVect.z)
                             SetBlipSprite (customerBlip, 198)
@@ -423,7 +425,7 @@ CreateThread(function()
                             dropoff.size.x, dropoff.size.y, dropoff.size.z, dropoff.color.r, dropoff.color.g, dropoff.color.b, 100,
                             dropoff.bounce, false, 2, dropoff.rotate, nil, nil, false)
 
-                            if distanceToDestination < 5.0 and speed < config.job.dropSpeed then
+                            if distanceToDestination < config.job.dropDistance and speed < config.job.dropSpeed then
                                 TriggerServerEvent('taxi_job:success')
                                 customerGetOutAtStop(customer, speed)
                                 SetEntityAsNoLongerNeeded(customer)
