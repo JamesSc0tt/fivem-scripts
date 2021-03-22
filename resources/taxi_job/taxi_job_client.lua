@@ -24,8 +24,8 @@ function getRandomPed(playerCoords)
     end
 
     if #search > 0 then
-		return search[GetRandomIntInRange(1, #search)]
-	end
+        return search[GetRandomIntInRange(1, #search)]
+    end
     
 end
 
