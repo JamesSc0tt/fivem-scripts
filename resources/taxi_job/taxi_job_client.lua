@@ -35,6 +35,10 @@ function createDestination()
     return pedDesination
 end
 
+function table.copy(org)
+    return {table.unpack(org)}
+end
+
 function customerGetOutAtStop(customer, speed)
     if speed <= config.job.dropSpeed then
         -- wait a bit so player can some to full stop
@@ -389,14 +393,25 @@ CreateThread(function()
 
                         -- We only want to create the blip once, otherwise it won't actually show
                         if destinationBlip == nil then
-                            destVect = createDestination()
-                            distanceToDestination = #(taxiVect - vector3(destVect.x, destVect.y, destVect.z))
+                            local tempTable = table.copy(config.locations)
+                            destVect = config.locations[math.random(1, #config.locations)]
+                            distanceToDestination = #(taxiVect - destVect)
                             -- make sure we don't grab the same point or a point that's too close
                             while distanceToDestination <= config.job.minDistance or distanceToDestination >= config.job.maxDistance do
                                 Citizen.Wait(5)
-                                destVect = createDestination()
-                                distanceToDestination = #(taxiVect - vector3(destVect.x, destVect.y, destVect.z))
+                                if (#tempTable ~= 0) then
+                                    local pos = math.random(1, #tempTable)
+                                    destVect = tempTable[pos]
+                                    distanceToDestination = #(taxiVect - destVect)
+                                    table.remove(tempTable, pos)
+                                else
+                                    log('No destinations found within max distance. Getting random drop off')
+                                    destVect = config.locations[math.random(1, #config.locations)]
+                                    distanceToDestination = #(taxiVect - destVect)
+                                    break
+                                end
                             end
+                            log('New destination at ' .. destVect)
                             RemoveBlip(customerBlip)
                             destinationBlip = AddBlipForCoord(destVect.x, destVect.y, destVect.z)
                             SetBlipSprite (customerBlip, 198)
@@ -406,7 +421,7 @@ CreateThread(function()
                             SetBlipAsShortRange(customerBlip, true)
                             SetBlipRoute(destinationBlip, true)
                         else
-                            distanceToDestination = #(taxiVect - vector3(destVect.x, destVect.y, destVect.z))
+                            distanceToDestination = #(taxiVect - destVect)
                         end
 
                         -- marker at destination
