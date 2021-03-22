@@ -37,7 +37,6 @@ config = {
 		minDistance = 500.0,
 		maxDistance = 2200.0
 	},
-	milesConversion = 1400,
 	authorizedVehicles = {
 		'taxi'
 	},
