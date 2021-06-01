@@ -1,24 +1,11 @@
 taxi = nil
 taxiPed = nil
 taxiHailed = false
-inTaxi = false
+hasEntered = false
 taxiBlip = nil
 
-RegisterCommand('taxi', function()
+AddEventHandler('taxi:hail', function()
     taxiHailed = true
-    
-
-    -- SetPedVehicleForcedSeatUsage(playerPed, vehicle, 1, 33)
-    -- SetPlayerResetFlagPreferRearSeats(playerPed, {1,2})
-    
-    
-
-
-    -- These need to be set after the taxi arrives
-    -- SetEntityAsNoLongerNeeded(taxi)
-    -- SetModelAsNoLongerNeeded(vehicleName)
-    -- SetEntityAsNoLongerNeeded(taxiPed)
-    -- SetModelAsNoLongerNeeded(taxiDriver)
 
     TriggerEvent('chat:addMessage', {
 		args = { 'A taxi is on the way!' }
@@ -30,7 +17,7 @@ function spawnTaxi()
     local taxiDriver = GetHashKey('s_m_o_busker_01')
     local playerPed = PlayerPedId()
     local pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
-    local _, vector = GetNthClosestVehicleNode(pX, pY, pZ, math.random(5, 10), 0, 0, 0)
+    local _, vector = GetNthClosestVehicleNode(pX, pY, pZ, math.random(50, 100), 0, 0, 0)
     local sX, sY, sZ = table.unpack(vector)
 
     RequestModel(vehicleName)
@@ -48,10 +35,36 @@ function spawnTaxi()
     taxiPed = CreatePedInsideVehicle(taxi, 26, taxiDriver, -1, true, false)
     SetBlockingOfNonTemporaryEvents(taxiPed, true)
     SetEntityAsMissionEntity(taxiPed, true, true)
-    TaskVehicleDriveToCoord(taxiPed, taxi, pX, pY, pZ, 26.0, 0, GetEntityModel(taxi), 411, 10.0)
+    -- TaskVehicleDriveToCoord(taxiPed, taxi, pX, pY, pZ, 15.0, 1.0, GetEntityModel(taxi), 786603, 3.0, true)
+    -- TaskVehicleMissionPedTarget(taxiPed, taxi, playerPed, 22, 26.0, 786603, 5.0, 1.0, false)
+    -- TaskVehicleParktaxiPed, taxi()
+    driveToAsTaxi(taxiPed, taxi, GetEntityCoords(playerPed))
+    -- TaskVehicleMissionCoorsTarget(taxiPed, taxi, rX, rY, rZ, 22, 26.0, 786603, 5.0, 1.0, false)
+end
+
+function driveToAsTaxi(ped, veh, destination)
+    local dX, dY, dZ = table.unpack(destination)
+    local _, roadSide = GetPointOnRoadSide(dX, dY, dZ, 1)
+    local x, y, z = table.unpack(roadSide)
+    TaskVehicleMissionCoorsTarget(ped, veh, x, y, z, 22, 100.0, 786603, 1.0, 1.0, false)
+end
+
+function endTransport(ped, veh, destination)
+    RemoveBlip(taxiBlip)
+    ClearVehicleTasks(veh)
+    ClearPedTasks(taxiPed)
+    Wait(3000)
+    TaskVehicleDriveWander(taxiPed, taxi, 26.0, 786603)
+    taxi = nil
+    taxiPed = nil
+    taxiHailed = false
+    hasEntered = false
+    taxiBlip = nil
+    destination = nil
 end
 
 CreateThread(function()
+    local destination = nil
     while true do
         Wait(0)
         if taxiHailed then
@@ -86,15 +99,11 @@ CreateThread(function()
                 if not IsPedInAnyVehicle(playerPed, false) then
                     if IsControlJustPressed(0, 23) then
                         TaskEnterVehicle(playerPed, taxi, -1, 2, 1.0, 1, 0)
-                        inTaxi = true
-                        TaxiInfoTimer = GetGameTimer()
                     end
                     -- can player cancel entering or do i need to specifically look for controls?
                 else
                     -- wait for waypoint before driving
-                    local waypoint
                     -- while waypoint == nil do
-                    Wait(1000)
                     -- end
                     -- get waypoint coords
                         -- local waypoint = {x,y,z}
@@ -106,6 +115,24 @@ CreateThread(function()
                     -- drive off and remove entity stuff
                     -- end
                 end
+            end
+            if IsPedSittingInVehicle(playerPed, taxi) then
+                hasEntered = true
+                -- check for waypoint change
+                if DoesBlipExist(GetFirstBlipInfoId(8)) then
+                    -- get waypoint
+                    local wp = GetBlipInfoIdCoord(GetFirstBlipInfoId(8))
+                    -- check for waypoint change
+                    if wp ~= nil and wp ~= destination then
+                        destination = wp
+                        driveToAsTaxi(taxiPed, taxi, wp)
+                        -- is a normal wait better here?
+                        Wait(1000)
+                    end
+                end
+            end
+            if hasEntered and not IsPedSittingInVehicle(playerPed, taxi) then
+                endTransport(taxiPed, taxi, destination)
             end
         else
             Wait(5000)

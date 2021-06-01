@@ -92,6 +92,10 @@ RegisterCommand('tp', function(source, args)
     end
 end, false)
 
+RegisterCommand('taxi', function()
+   TriggerEvent('taxi:hail')
+end)
+
 CreateThread(function()
     while true do
         Wait(0)
