@@ -58,17 +58,19 @@ CreateThread(function()
             local playerPed = PlayerPedId()
             local pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
 
-            spawnTaxi()
+            if taxi == nil then
+                spawnTaxi()
+            end
             
             if taxiBlip == nil then
-                local blip = AddBlipForEntity(taxi)
-                SetBlipSprite(blip, 198)
-                SetBlipFlashes(blip, true)
-                SetBlipFlashTimer(blip, 5000)
-                SetBlipDisplay(blip, 4)
-                SetBlipScale  (blip, 0.75)
-                SetBlipColour (blip, 2)
-                SetBlipAsShortRange(blip, false)
+                taxiBlip = AddBlipForEntity(taxi)
+                SetBlipSprite(taxiBlip, 198)
+                SetBlipFlashes(taxiBlip, true)
+                SetBlipFlashTimer(taxiBlip, 5000)
+                SetBlipDisplay(taxiBlip, 4)
+                SetBlipScale  (taxiBlip, 0.75)
+                SetBlipColour (taxiBlip, 2)
+                SetBlipAsShortRange(taxiBlip, false)
             end
 
             -- if not DoesEntityExist(taxi) then
@@ -77,21 +79,36 @@ CreateThread(function()
             --         end
             --     end
             -- else
-                pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
-                vX, vY, vZ = table.unpack(GetEntityCoords(taxi))
-                local DistanceBetweenTaxi = GetDistanceBetweenCoords(pX, pY, pZ, vX, vY, vZ, true)
-                if DistanceBetweenTaxi <= 20.0 then
-                    if not IsPedInAnyVehicle(playerPed, false) then
-                        if IsControlJustPressed(0, 23) then
-                            TaskEnterVehicle(playerPed, taxi, -1, 2, 1.0, 1, 0)
-                            inTaxi = true
-                            TaxiInfoTimer = GetGameTimer()
-                        end
+            pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
+            vX, vY, vZ = table.unpack(GetEntityCoords(taxi))
+            local DistanceBetweenTaxi = GetDistanceBetweenCoords(pX, pY, pZ, vX, vY, vZ, true)
+            if DistanceBetweenTaxi <= 20.0 then
+                if not IsPedInAnyVehicle(playerPed, false) then
+                    if IsControlJustPressed(0, 23) then
+                        TaskEnterVehicle(playerPed, taxi, -1, 2, 1.0, 1, 0)
+                        inTaxi = true
+                        TaxiInfoTimer = GetGameTimer()
                     end
+                    -- can player cancel entering or do i need to specifically look for controls?
+                else
+                    -- wait for waypoint before driving
+                    local waypoint
+                    -- while waypoint == nil do
+                    Wait(1000)
+                    -- end
+                    -- get waypoint coords
+                        -- local waypoint = {x,y,z}
+                        -- if waypoint
+                        -- TaskVehicleDriveToCoord(taxiPed, taxi, waypoint.x, waypoint.y, waypoint.z, 26.0, 0, GetEntityModel(taxi), 411, 10.0)
+                    -- drive to waypoint
+                    -- check for change in waypoint
+                    -- wait for player to get out
+                    -- drive off and remove entity stuff
+                    -- end
                 end
-            -- end
+            end
         else
-            Wait(1000)
+            Wait(5000)
         end
     end
 end)
