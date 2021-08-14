@@ -2,10 +2,10 @@
 fx_version 'cerulean'
 game 'gta5'
 
-author 'An awesome dude'
-description 'An awesome, but short, description'
-version '1.0.0'
+author 'P2'
+description 'A script for an AI taxi'
+version '0.0.01'
 
-resource_type 'gameplay' { name = 'My awesome game type!' }
+resource_type 'gameplay' { name = 'Lets player get carted around the city' }
 
 client_script 'taxi_client.lua'

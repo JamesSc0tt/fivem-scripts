@@ -6,6 +6,11 @@ hasArrivedForPickup = false
 taxiBlip = nil
 destination = nil
 circle = nil
+carModel = 'taxi'
+
+function log(args)
+    Citizen.Trace(args .. '\n')
+end
 
 AddEventHandler('taxi:hail', function()
     if taxiHailed then
@@ -18,61 +23,91 @@ AddEventHandler('taxi:hail', function()
 	})
 end)
 
+RegisterNetEvent("taxi:callAI")
+AddEventHandler('taxi:callAI', function()
+    StartAiTaxi()
+end)
+
 AddEventHandler('taxi:cancel', function()
     endTransport()
 end)
 
-function getGroundZCoord(coord)
-    local cx, cy, cz = table.unpack(coord)
-    for i = 0, 1000, 1 do
-    -- repeat
-        if GetGroundZFor_3dCoord(cx, cy, ToFloat(i), cz, false) then
-            cz = ToFloat(i)
-            break;
+-- TODO: move to utils file
+function GetGroundZCoord(x, y)
+    for h = 1, 1000 do
+        local foundGround, z = GetGroundZFor_3dCoord(x, y, h + 0.0)
+
+        if foundGround then
+            TriggerEvent('chat:addMessage', {
+                args = { 'meow ' .. x .. ', ' .. y .. ', ' .. h + 0.0  }
+            })
+            return vector3(x, y, h + 0.0)
         end
-    -- until (ground or i < 0.0)
+
+        Wait(5)
     end
-    TriggerEvent('chat:addMessage', {
-		args = { 'meow ' .. cx .. ', ' .. cy .. ', ' .. cz  }
-	})
-    return vector3(cx, cy, cz)
 end
 
-function spawnTaxi(pX, pY, pZ)
-    local vehicleName = GetHashKey('taxi')
-    local taxiDriver = GetHashKey('s_m_o_busker_01')
-    -- GetNthClosestVehicleNodeIdWithHeading
-    -- local _, vector = GetNthClosestVehicleNode(pX, pY, pZ, math.random(80, 100), 0, 0, 0)
-    local _, vector, h = GetNthClosestVehicleNodeFavourDirection(pX, pY, pZ, pX, pY, pZ, math.random(80, 100), 1, 0x40400000, 0)
-    -- TaskTurnPedToFaceCoord
-    -- TaskTurnPedToFaceEntity
-    -- GetPickupCoords
-    -- GetSafePickupCoords
-    -- GetSafeCoordForPed
+-- might be good to put in utils and pass in vehicle model and ped model as well
+function SpawnTaxi(coords)
+    -- different ped?
+    local taxiDriver = 's_m_o_busker_01'
+    local vector, h = GetTaxiSpawnPoint(coords)
     local sX, sY, sZ = table.unpack(vector)
 
-    RequestModel(vehicleName)
+    RequestModel(carModel)
+    while not HasModelLoaded(carModel) do
+        Wait(0)
+    end
+
+    taxi = CreateVehicle(carModel, sX, sY, sZ, h, true, false)
+    SetEntityInvincible(taxi, true)
+    SetVehicleOnGroundProperly(taxi)
+
     RequestModel(taxiDriver)
-
-    while not HasModelLoaded(vehicleName) do
-        Wait(1)
-    end
-
     while not HasModelLoaded(taxiDriver) do 
-        Wait(1)
+        Wait(0)
     end
 
-    taxi = CreateVehicle(vehicleName, sX, sY, sZ, h, true, false)
-    SetEntityAsMissionEntity(taxi, true, true)
-    SetVehicleEngineOn(taxi, true, true, false)
+    taxiPed = CreatePedInsideVehicle(taxi, 4, taxiDriver, -1, true, false)
+    SetModelAsNoLongerNeeded(carModel)
+    SetModelAsNoLongerNeeded(taxiDriver)
+    Citizen.Wait(1000)
+    SetEntityInvincible(taskveh, false) 
 
-    taxiPed = CreatePedInsideVehicle(taxi, 26, taxiDriver, -1, true, false)
-    SetBlockingOfNonTemporaryEvents(taxiPed, true)
-    SetEntityAsMissionEntity(taxiPed, true, true)
-    PickUpFare(taxiPed, taxi, vector3(pX, pY, pZ))
+    return taxi, taxiPed
 end
 
-function calculateRoadsideCoords(dest)
+-- move to utils to use for any vehicle spawn?
+function GetTaxiSpawnPoint(coords)
+    while true do
+        local _, spawn, h = GetNthClosestVehicleNode(coords.x, coords.y, coords.z, math.random(80, 100), 0, 100.0, 2.5)
+        if spawn.z ~= 0.0 then
+            local nearVehicle = GetClosestVehicle(spawn.x, spawn.y, spawn.z, 20.000, 0, 70)
+            if not DoesEntityExist(nearVehicle) then
+                return spawn, h
+            end
+        end
+        Wait(1000)
+    end
+end
+
+function GetTaxiDropOffPoint(coords)
+    while true do
+        local _, drop, h = GetClosestVehicleNode(coords.x, coords.y, coords.z, 0, 100.0, 2.5)
+        if drop.z ~= 0.0 then
+            local nearVehicle = GetClosestVehicle(drop.x, drop.y, drop.z, 20.000, 0, 70)
+            if not DoesEntityExist(nearVehicle) then
+                return drop, h
+            end
+        end
+        Wait(1000)
+    end
+end
+
+-- failed experiment because driveways are considered roads and medians are roadsides
+-- TODO: remove
+function CalculateRoadsideCoords(dest)
     local dX, dY, dZ = table.unpack(dest)
     local _, rs = GetPointOnRoadSide(dX, dY, dZ, 0)
     local _, node = GetClosestVehicleNode(dX, dY, dZ, 0, 3.0, 0)
@@ -103,19 +138,21 @@ function calculateRoadsideCoords(dest)
     return vector3(x, y, rs.z)
 end
 
+-- TODO: remove
 function PickUpFare(ped, veh, dest)
     circle = dest
     TriggerEvent('chat:addMessage', {
 		args = { 'Pick up at ' .. dest.x .. ', ' .. dest.y .. ', ' .. dest.z  }
 	})
-    TaskVehicleDriveToCoord(ped, veh, dest.x, dest.y, dest.z, 20.0, 0, veh, 411, 5.0)
-    -- SetPedKeepTask(ped, true)
+    TaskVehicleDriveToCoord(ped, veh, dest.x, dest.y, dest.z, 8.0, 1, carModel, 786603, 15.0, true)
+    SetPedKeepTask(ped, true)
 end
 
-function driveToAsTaxi(ped, veh, dest)
-    -- local roadSide = calculateRoadsideCoords(dest)
+-- TODO: remove
+function DriveToAsTaxi(ped, veh, dest)
+    -- local roadSide = CalculateRoadsideCoords(dest)
     -- local r1, r2, roadSide, r4, r5, r6 = GetClosestRoad(dX, dY, dZ, 1.0, 0, false)
-    -- groundZCoord = getGroundZCoord(dest)
+    -- groundZCoord = GetGroundZCoord(dest)
     local x, y, z = table.unpack(dest)
     local _, drop = GetNthClosestVehicleNodeFavourDirection(x, y, z, x, y, z, 3, 1, 0x40400000, 0)
     local dx, dy, dz = table.unpack(drop)
@@ -133,7 +170,11 @@ function driveToAsTaxi(ped, veh, dest)
     TriggerEvent('chat:addMessage', {
 		args = { 'closest vnode ' .. dx .. ', ' .. dy .. ', ' .. dz  }
 	})
-    TaskVehicleDriveToCoord(ped, veh, dx, dy, dz, 20.0, 0, veh, 411, 10.0)
+    TaskVehicleDriveToCoordLongrange(ped, veh, dx, dy, dz, 14.0, 786603, 55.0)
+    SetPedKeepTask(ped, true)
+
+    -- while distance > whatever
+    -- 
     -- local taskSeq = 0
     -- OpenSequenceTask(taskSeq)
     -- TaskVehicleDriveToCoordLongrange(0, veh, x, y, z, 20.0, 786468, 500.0)
@@ -150,18 +191,15 @@ function driveToAsTaxi(ped, veh, dest)
     -- ClearSequenceTask(taskSeq)
 end
 
-function endTransport()
+function EndTransport()
     Wait(2000)
     RemoveBlip(taxiBlip)
-    -- ClearVehicleTasks(taxi)
-    ClearPedTasks(taxiPed)
-    -- local _, taskSeq = OpenSequenceTask(0)
-    -- TaskVehicleTempAction(0, taxi, 9, 5000)
-    -- TaskVehicleDriveWander(0, taxi, 20.0, 419)
-    -- CloseSequenceTask(taskSeq)
-    -- TaskPerformSequence(taxiPed, taskSeq)
-    SetEntityAsNoLongerNeeded(taxi)
-    SetEntityAsNoLongerNeeded(taxiPed)
+    SetPedKeepTask(taxiPed, false)
+    SetPedAsNoLongerNeeded(taxi)
+    SetVehicleAsNoLongerNeeded(taxiPed)
+    SetBlockingOfNonTemporaryEvents(taxiPed, true)
+    SetPedKeepTask(taxiPed, true)
+    TaskVehicleDriveWander(taxiPed, taxi, 10.0, 786603)
     taxi = nil
     taxiPed = nil
     taxiHailed = false
@@ -171,25 +209,163 @@ function endTransport()
     destination = nil
 end
 
-CreateThread(function()
-    local arrivalTime = 0.0
-    while true do
+function StartAiTaxi()
+    local playerPed = PlayerPedId()
+    local pcoords = GetEntityCoords(playerPed)
+    local dcoords = vector3(-900.0, -900.0, -900.0)
+    local storedCoords = vector3(-900.0, -900.0, -900.0)
+    local count = 400000
+    local inTaxi = false
+    local enroute = false
+    -- spawn
+    SpawnTaxi(pcoords) -- switch to use returned values instead of globals
+    log('taxi spawned at ' .. pcoords)
+
+    circle = pcoords
+    TriggerEvent('chat:addMessage', {
+        args = { 'Pick up at ' .. pcoords.x .. ', ' .. pcoords.y .. ', ' .. pcoords.z  }
+    })
+    TaskVehicleDriveToCoord(taxiPed, taxi, pcoords.x, pcoords.y, pcoords.z, 10.0, 1, carModel, 786603, 10.0, true)
+    SetPedKeepTask(ped, true)
+    enroute = false
+    -- pick up
+    while count > 0 do
         Wait(1)
-        local playerPed = PlayerPedId()
-        if taxiHailed then
-            
-            if taxi == nil then
-                pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
-                spawnTaxi(pX, pY, pZ)
+        count = count - 1
+        
+        if not enroute and GetVehiclePedIsIn(playerPed, false) ~= taxi then
+            local distanceToTaxi = #(GetEntityCoords(taxi) - GetEntityCoords(playerPed))
+            -- only using for testing pick up location\
+            if not hasArrivedForPickup then
+                if circle.x ~= nil then
+                    DrawMarker(1, circle.x, circle.y, circle.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                                5.0, 5.0, 2.0, 204, 204, 0, 100,
+                                false, false, 2, false, nil, nil, false)
+                end
+
+                if taxiBlip == nil then 
+                    taxiBlip = AddBlipForEntity(taxi)
+                    SetBlipSprite(taxiBlip, 198)
+                    SetBlipFlashes(taxiBlip, true)
+                    SetBlipFlashTimer(taxiBlip, 5000)
+                    SetBlipDisplay(taxiBlip, 4)
+                    SetBlipScale  (taxiBlip, 0.75)
+                    SetBlipColour (taxiBlip, 2)
+                    SetBlipAsShortRange(taxiBlip, false)
+                end
+
+                if distanceToTaxi < 10.0 then
+                    hasArrivedForPickup = true
+                    log('arrived' .. GetGameTimer())
+                end
+            end
+                
+            if distanceToTaxi < 25.0 then
+                -- SetVehicleForwardSpeed(taxi, math.ceil(GetEntitySpeed(taxi)*0.75 ))
+                TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
             end
 
+            if distanceToTaxi < 10.0 then
+                if not IsPedInAnyVehicle(playerPed, false) and IsControlJustPressed(0,23) then
+                    -- experiment with SetVehicleExclusiveDriver_2 instead
+                    TaskEnterVehicle(playerPed, taxi, -1, 2, 1.0, 1, 0)
+                end
+            end
+        end
+
+        if GetVehiclePedIsIn(playerPed, false) == taxi then
+            Wait(1000)
+
+            if IsControlJustPressed(0,23) and inTaxi then
+                count = 0
+                if GetEntitySpeed > 1.0 then
+                    -- SetVehicleForwardSpeed(taxi, math.ceil(GetEntitySpeed(taxi)*0.75 ))
+                    TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
+                end
+            end
+
+            if not inTaxi then
+                inTaxi = true
+                RemoveBlip(taxiBlip)
+                -- remove blips
+            end
+
+            if not enroute and IsWaypointActive() then
+                local waypoint = GetBlipInfoIdCoord(GetFirstBlipInfoId(8))
+                enroute = true
+                dcoords = GetTaxiDropOffPoint(waypoint)
+                log(dcoords)
+                TaskVehicleDriveToCoordLongrange(taxiPed, taxi, dcoords.x, dcoords.y, dcoords.z, 28.0, 786603, 55.0)
+                SetPedKeepTask(taxiPed, true) 
+            end
+
+            if enroute then
+
+                if count < 100 then
+                    SetPedKeepTask(taxiPed, false)
+                    SetPedAsNoLongerNeeded(taxiPed)         
+                    SetVehicleAsNoLongerNeeded(taxi)
+                    FreezeEntityPosition(taxi,true)
+                    Citizen.Wait(1000)
+
+                    SetBlockingOfNonTemporaryEvents(taxiPed, true)        
+                    SetPedSeeingRange(taxiPed, 0.0)       
+                    SetPedHearingRange(taxiPed, 0.0)      
+                    SetPedFleeAttributes(taxiPed, 0, false)       
+                    SetPedKeepTask(taxiPed, true) 
+                    
+				    FreezeEntityPosition(taxi,false)
+                    TaskVehicleDriveWander(taxiPed, taxi, 10.0, 786603)
+                    count = 0
+                end
+            end
+
+            if not IsWaypointActive() then
+                enroute = false
+            end
+        else
+            inTaxi = false
+        end
+    end
+    -- reset everything
+    inTaxi = false
+    SetPedKeepTask(taxiPed, false)
+    SetPedAsNoLongerNeeded(taxiPed)         
+    SetVehicleAsNoLongerNeeded(taxi)
+    taxi = nil
+    taxiPed = nil
+end
+
+CreateThread(function() -- move everything out into above function. Doesn't need to be a thread that always runs
+    while true do
+        Wait(1)
+        if taxiHailed then
+            local playerPed = PlayerPedId()
+            local pcoords = GetEntityCoords(playerPed)
+            local arrivalTime = 0.0
+            
+            if taxi == nil then
+                SpawnTaxi(pcoords) -- switch to use returned values instead of globals
+                log('taxi spawned at ' .. pcoords)
+
+                circle = pcoords
+                TriggerEvent('chat:addMessage', {
+                    args = { 'Pick up at ' .. pcoords.x .. ', ' .. pcoords.y .. ', ' .. pcoords.z  }
+                })
+                TaskVehicleDriveToCoord(taxiPed, taxi, pcoords.x, pcoords.y, pcoords.z, 8.0, 1, carModel, 786603, 15.0, true)
+                SetPedKeepTask(ped, true)
+            end
+            
+
+            -- only using for testing pick up location
             if circle.x ~= nil then
                 DrawMarker(1, circle.x, circle.y, circle.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
                             5.0, 5.0, 2.0, 204, 204, 0, 100,
                             false, false, 2, false, nil, nil, false)
             end
             
-            if taxiBlip == nil then
+            -- while enroute do this. stop after pick up
+            if taxiBlip == nil then 
                 taxiBlip = AddBlipForEntity(taxi)
                 SetBlipSprite(taxiBlip, 198)
                 SetBlipFlashes(taxiBlip, true)
@@ -199,11 +375,11 @@ CreateThread(function()
                 SetBlipColour (taxiBlip, 2)
                 SetBlipAsShortRange(taxiBlip, false)
             end
-            pX, pY, pZ = table.unpack(GetEntityCoords(playerPed))
             vX, vY, vZ = table.unpack(GetEntityCoords(taxi))
-            local DistanceBetweenTaxi = GetDistanceBetweenCoords(pX, pY, pZ, vX, vY, vZ, true)
+            local DistanceBetweenTaxi = GetDistanceBetweenCoords(pcoords.x, pcoords.y, pcoords.z, vX, vY, vZ, true)
+
             if DistanceBetweenTaxi <= 20.0 then
-                if not IsPedInAnyVehicle(playerPed, false) and IsControlJustPressed(0, 23) then
+                if not IsPedInAnyVehicle(playerPed, false) and IsControlPressed(0,23) and IsControlJustReleased(0,23) then
                     -- experiment with SetVehicleExclusiveDriver_2 instead
                     TaskEnterVehicle(playerPed, taxi, -1, 2, 1.0, 1, 0)
                 end
@@ -213,37 +389,51 @@ CreateThread(function()
                 end
             end
             if hasArrivedForPickup and not hasEntered and GetGameTimer() > arrivalTime + 40000 then
-                endTransport()
+                EndTransport()
                 arrivalTime = 0.0
             end
             if IsPedSittingInVehicle(playerPed, taxi) then
                 hasEntered = true
                 -- check for waypoint change
-                if DoesBlipExist(GetFirstBlipInfoId(8)) then
+                if IsWaypointActive() then
                     -- get waypoint
                     -- local wp = GetBlipCoords(GetFirstBlipInfoId(8))
-                    local wp = GetBlipInfoIdCoord(GetFirstBlipInfoId(8))
+                    local waypoint = GetBlipInfoIdCoord(GetFirstBlipInfoId(8))
                     -- local wp = Citizen.InvokeNative(0xFA7C7F0AADF25D09, GetFirstBlipInfoId(8), Citizen.ResultAsVector())
                     -- check for waypoint change
-                    if wp ~= nil and wp ~= destination then
+                    if waypoint ~= nil and waypoint ~= destination then
                         TriggerEvent('chat:addMessage', {
-                            args = { 'wp changed'  }
+                            args = { 'waypoint changed'  }
                         })
-                        destination = wp
-                        driveToAsTaxi(taxiPed, taxi, wp)
+                        destination = waypoint
+                        DriveToAsTaxi(taxiPed, taxi, waypoint)
                         
                         -- is a normal wait better here?
-                        Wait(1000)
+                        --Wait(1000)
                     end
-                    if GetDistanceBetweenCoords() < 55.0 then
-                        TaskVehicleTempAction(taxiPed, taxi, 6, 2000)
-                        SetVehicleHandbrake(taxiVeh, true)
-                        SetPedKeepTask(taxiPed, true)
+
+                    local endDist = #(GetEntityCoords(taxiPed) - GetEntityCoords(destination))
+
+                    while GetEntitySpeed(taxi) and endDist > 10.0 do
+                        endDist = #(GetEntityCoords(taxiPed) - GetEntityCoords(destination))
+                        Citizen.Wait(1000)
+                        if IsControlPressed(0,23) and IsControlJustReleased(0,23) then
+                            endDist = 1.0
+                        end
                     end
+
+                    while GetEntitySpeed(taxi) > 1.0 do
+                        SetVehicleForwardSpeed(taxi, math.ceil(GetEntitySpeed(taxi)*0.75 ))
+                        TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
+                        Citizen.Wait(1)
+                    end
+                    -- TaskVehicleTempAction(taxiPed, taxi, 6, 2000)
+                    -- SetVehicleHandbrake(taxiVeh, true)
+                    -- SetPedKeepTask(taxiPed, true)
                 end
             end
             if hasEntered and not IsPedSittingInVehicle(playerPed, taxi) then
-                endTransport()
+                EndTransport()
             end
         else
             Wait(5000)
