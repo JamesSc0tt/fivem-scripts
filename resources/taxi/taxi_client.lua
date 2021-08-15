@@ -1,5 +1,3 @@
-taxi = nil
-taxiPed = nil
 taxiHailed = false
 hasEntered = false
 hasArrivedForPickup = false
@@ -60,7 +58,7 @@ function SpawnTaxi(coords)
         Wait(0)
     end
 
-    taxi = CreateVehicle(carModel, sX, sY, sZ, h, true, false)
+    local taxi = CreateVehicle(carModel, sX, sY, sZ, h, true, false)
     SetEntityInvincible(taxi, true)
     SetVehicleOnGroundProperly(taxi)
 
@@ -69,7 +67,7 @@ function SpawnTaxi(coords)
         Wait(0)
     end
 
-    taxiPed = CreatePedInsideVehicle(taxi, 4, taxiDriver, -1, true, false)
+    local taxiPed = CreatePedInsideVehicle(taxi, 4, taxiDriver, -1, true, false)
     SetModelAsNoLongerNeeded(carModel)
     SetModelAsNoLongerNeeded(taxiDriver)
     Citizen.Wait(1000)
@@ -213,12 +211,12 @@ function StartAiTaxi()
     local playerPed = PlayerPedId()
     local pcoords = GetEntityCoords(playerPed)
     local dcoords = vector3(-900.0, -900.0, -900.0)
-    local storedCoords = vector3(-900.0, -900.0, -900.0)
     local count = 400000
     local inTaxi = false
     local enroute = false
+    SetWaypointOff()
     -- spawn
-    SpawnTaxi(pcoords) -- switch to use returned values instead of globals
+    local taxi, taxiPed = SpawnTaxi(pcoords) -- switch to use returned values instead of globals
     log('taxi spawned at ' .. pcoords)
 
     circle = pcoords
@@ -226,10 +224,9 @@ function StartAiTaxi()
         args = { 'Pick up at ' .. pcoords.x .. ', ' .. pcoords.y .. ', ' .. pcoords.z  }
     })
     TaskVehicleDriveToCoord(taxiPed, taxi, pcoords.x, pcoords.y, pcoords.z, 10.0, 1, carModel, 786603, 10.0, true)
-    SetPedKeepTask(ped, true)
-    enroute = false
+    SetPedKeepTask(taxiPed, true)
     -- pick up
-    while count > 0 do
+    while count > 0 and not IsPedDeadOrDying(taxiPed, true) and DoesEntityExist(taxiPed) do
         Wait(1)
         count = count - 1
         
@@ -275,8 +272,10 @@ function StartAiTaxi()
 
         if GetVehiclePedIsIn(playerPed, false) == taxi then
             Wait(1000)
+            log(count)
 
             if IsControlJustPressed(0,23) and inTaxi then
+                log('got out')
                 count = 0
                 if GetEntitySpeed > 1.0 then
                     -- SetVehicleForwardSpeed(taxi, math.ceil(GetEntitySpeed(taxi)*0.75 ))
@@ -286,6 +285,7 @@ function StartAiTaxi()
 
             if not inTaxi then
                 inTaxi = true
+                log('got in')
                 RemoveBlip(taxiBlip)
                 -- remove blips
             end
@@ -300,33 +300,44 @@ function StartAiTaxi()
             end
 
             if enroute then
+                local endDist = #(GetEntityCoords(taxi) - dcoords)
+                
+                if endDist < 150.0 or count < 100 then
 
-                if count < 100 then
+                    while GetEntitySpeed(taxi) > 1.0 and endDist > 10.0 do
+                        endDist = #(GetEntityCoords(taxi) - dcoords)
+                        Wait(1000)
+                    end
+    
+                    while GetEntitySpeed(taxi) > 1.0 do
+                        TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
+                        Wait(1)
+                    end
+
                     SetPedKeepTask(taxiPed, false)
                     SetPedAsNoLongerNeeded(taxiPed)         
                     SetVehicleAsNoLongerNeeded(taxi)
                     FreezeEntityPosition(taxi,true)
                     Citizen.Wait(1000)
 
-                    SetBlockingOfNonTemporaryEvents(taxiPed, true)        
-                    SetPedSeeingRange(taxiPed, 0.0)       
-                    SetPedHearingRange(taxiPed, 0.0)      
-                    SetPedFleeAttributes(taxiPed, 0, false)       
+                    SetBlockingOfNonTemporaryEvents(taxiPed, true)      
                     SetPedKeepTask(taxiPed, true) 
                     
 				    FreezeEntityPosition(taxi,false)
                     TaskVehicleDriveWander(taxiPed, taxi, 10.0, 786603)
                     count = 0
+                    log('taxi should leave ' .. count)
                 end
-            end
 
-            if not IsWaypointActive() then
-                enroute = false
+                if not IsWaypointActive() then
+                    enroute = false
+                end
             end
         else
             inTaxi = false
         end
     end
+    log('taxi task finished ' .. count)
     -- reset everything
     inTaxi = false
     SetPedKeepTask(taxiPed, false)
@@ -353,7 +364,7 @@ CreateThread(function() -- move everything out into above function. Doesn't need
                     args = { 'Pick up at ' .. pcoords.x .. ', ' .. pcoords.y .. ', ' .. pcoords.z  }
                 })
                 TaskVehicleDriveToCoord(taxiPed, taxi, pcoords.x, pcoords.y, pcoords.z, 8.0, 1, carModel, 786603, 15.0, true)
-                SetPedKeepTask(ped, true)
+                SetPedKeepTask(taxiPed, true)
             end
             
 
