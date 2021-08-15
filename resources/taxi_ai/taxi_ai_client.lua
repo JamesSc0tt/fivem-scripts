@@ -18,10 +18,6 @@ AddEventHandler('taxi:callAI', function()
     end
 end)
 
-AddEventHandler('taxi:cancel', function()
-    endTransport()
-end)
-
 -- might be good to put in utils and pass in vehicle model and ped model as well
 function SpawnTaxi(coords)
     -- different ped?
@@ -129,13 +125,11 @@ function StartAiTaxi()
             end
                 
             if distanceToTaxi < 25.0 then
-                -- SetVehicleForwardSpeed(taxi, math.ceil(GetEntitySpeed(taxi)*0.75 ))
                 TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
             end
 
             if distanceToTaxi < 10.0 then
                 if not IsPedInAnyVehicle(playerPed, false) and IsControlJustPressed(0,23) then
-                    -- experiment with SetVehicleExclusiveDriver_2 instead
                     TaskEnterVehicle(playerPed, taxi, -1, 2, 1.0, 1, 0)
                 end
             end
@@ -161,7 +155,6 @@ function StartAiTaxi()
                 log('got in')
                 RemoveBlip(taxiBlip)
                 taxiBlip = nil
-                -- remove blips
             end
 
             if not enroute and IsWaypointActive() then
