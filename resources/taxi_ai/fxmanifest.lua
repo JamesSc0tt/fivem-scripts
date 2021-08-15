@@ -4,7 +4,7 @@ game 'gta5'
 
 author 'P2'
 description 'A script for an AI taxi'
-version '0.0.01'
+version '0.1.0'
 
 resource_type 'gameplay' { name = 'Lets player get carted around the city' }
 
