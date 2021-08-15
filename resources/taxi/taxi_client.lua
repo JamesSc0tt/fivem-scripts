@@ -17,8 +17,8 @@ AddEventHandler('taxi:hail', function()
     taxiHailed = true
 
     TriggerEvent('chat:addMessage', {
-		args = { 'A taxi is on the way!' }
-	})
+        args = { 'A taxi is on the way!' }
+    })
 end)
 
 RegisterNetEvent("taxi:callAI")
@@ -140,8 +140,8 @@ end
 function PickUpFare(ped, veh, dest)
     circle = dest
     TriggerEvent('chat:addMessage', {
-		args = { 'Pick up at ' .. dest.x .. ', ' .. dest.y .. ', ' .. dest.z  }
-	})
+        args = { 'Pick up at ' .. dest.x .. ', ' .. dest.y .. ', ' .. dest.z  }
+    })
     TaskVehicleDriveToCoord(ped, veh, dest.x, dest.y, dest.z, 8.0, 1, carModel, 786603, 15.0, true)
     SetPedKeepTask(ped, true)
 end
@@ -163,11 +163,11 @@ function DriveToAsTaxi(ped, veh, dest)
     -- Citizen.Trace(r5 .. '\n')
     -- Citizen.Trace(r6 .. '\n')
     TriggerEvent('chat:addMessage', {
-		args = { 'drop off at ' .. x .. ', ' .. y .. ', ' .. z  }
-	})
+        args = { 'drop off at ' .. x .. ', ' .. y .. ', ' .. z  }
+    })
     TriggerEvent('chat:addMessage', {
-		args = { 'closest vnode ' .. dx .. ', ' .. dy .. ', ' .. dz  }
-	})
+        args = { 'closest vnode ' .. dx .. ', ' .. dy .. ', ' .. dz  }
+    })
     TaskVehicleDriveToCoordLongrange(ped, veh, dx, dy, dz, 14.0, 786603, 55.0)
     SetPedKeepTask(ped, true)
 
@@ -189,6 +189,7 @@ function DriveToAsTaxi(ped, veh, dest)
     -- ClearSequenceTask(taskSeq)
 end
 
+-- TODO: remove
 function EndTransport()
     Wait(2000)
     RemoveBlip(taxiBlip)
@@ -214,6 +215,8 @@ function StartAiTaxi()
     local count = 400000
     local inTaxi = false
     local enroute = false
+    local taxiBlip = nil
+    local circle = nil
     SetWaypointOff()
     -- spawn
     local taxi, taxiPed = SpawnTaxi(pcoords) -- switch to use returned values instead of globals
@@ -270,23 +273,21 @@ function StartAiTaxi()
             end
         end
 
+        if enroute and inTaxi and not IsPedSittingInVehicle(playerPed, taxi) then
+            count = 0
+            log('got out')
+            break
+        end
+
         if GetVehiclePedIsIn(playerPed, false) == taxi then
             Wait(1000)
             log(count)
-
-            if IsControlJustPressed(0,23) and inTaxi then
-                log('got out')
-                count = 0
-                if GetEntitySpeed > 1.0 then
-                    -- SetVehicleForwardSpeed(taxi, math.ceil(GetEntitySpeed(taxi)*0.75 ))
-                    TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
-                end
-            end
 
             if not inTaxi then
                 inTaxi = true
                 log('got in')
                 RemoveBlip(taxiBlip)
+                taxiBlip = nil
                 -- remove blips
             end
 
@@ -303,30 +304,26 @@ function StartAiTaxi()
                 local endDist = #(GetEntityCoords(taxi) - dcoords)
                 
                 if endDist < 150.0 or count < 100 then
+                    log('final stretch')
 
-                    while GetEntitySpeed(taxi) > 1.0 and endDist > 10.0 do
+                    while IsPedSittingInVehicle(playerPed, taxi) and GetEntitySpeed(taxi) > 1.0 and endDist > 10.0 do
                         endDist = #(GetEntityCoords(taxi) - dcoords)
                         Wait(1000)
+                        if IsControlPressed(0,23) and IsControlJustReleased(0,23) then
+                            endDist = 1.0
+                        end
                     end
     
-                    while GetEntitySpeed(taxi) > 1.0 do
+                    while IsPedSittingInVehicle(playerPed, taxi) and GetEntitySpeed(taxi) > 1.0 do
                         TaskVehicleTempAction(taxiPed, taxi, 27, 25.0)
                         Wait(1)
                     end
 
-                    SetPedKeepTask(taxiPed, false)
-                    SetPedAsNoLongerNeeded(taxiPed)         
-                    SetVehicleAsNoLongerNeeded(taxi)
-                    FreezeEntityPosition(taxi,true)
-                    Citizen.Wait(1000)
+                    while IsPedSittingInVehicle(playerPed, taxi) do
+                        Wait(1)
+                    end
 
-                    SetBlockingOfNonTemporaryEvents(taxiPed, true)      
-                    SetPedKeepTask(taxiPed, true) 
-                    
-				    FreezeEntityPosition(taxi,false)
-                    TaskVehicleDriveWander(taxiPed, taxi, 10.0, 786603)
                     count = 0
-                    log('taxi should leave ' .. count)
                 end
 
                 if not IsWaypointActive() then
@@ -337,16 +334,27 @@ function StartAiTaxi()
             inTaxi = false
         end
     end
-    log('taxi task finished ' .. count)
+    log('taxi task finished')
     -- reset everything
     inTaxi = false
     SetPedKeepTask(taxiPed, false)
     SetPedAsNoLongerNeeded(taxiPed)         
     SetVehicleAsNoLongerNeeded(taxi)
+    FreezeEntityPosition(taxi, true)
+    Citizen.Wait(1200)
+
+    SetBlockingOfNonTemporaryEvents(taxiPed, true)      
+    SetPedKeepTask(taxiPed, true) 
+    
+    FreezeEntityPosition(taxi, false)
+    TaskVehicleDriveWander(taxiPed, taxi, 10.0, 786603)
     taxi = nil
     taxiPed = nil
+    taxiBlip = nil
+    circle = nil
 end
 
+-- TODO: remove
 CreateThread(function() -- move everything out into above function. Doesn't need to be a thread that always runs
     while true do
         Wait(1)
@@ -366,7 +374,6 @@ CreateThread(function() -- move everything out into above function. Doesn't need
                 TaskVehicleDriveToCoord(taxiPed, taxi, pcoords.x, pcoords.y, pcoords.z, 8.0, 1, carModel, 786603, 15.0, true)
                 SetPedKeepTask(taxiPed, true)
             end
-            
 
             -- only using for testing pick up location
             if circle.x ~= nil then
@@ -418,7 +425,7 @@ CreateThread(function() -- move everything out into above function. Doesn't need
                         })
                         destination = waypoint
                         DriveToAsTaxi(taxiPed, taxi, waypoint)
-                        
+
                         -- is a normal wait better here?
                         --Wait(1000)
                     end
