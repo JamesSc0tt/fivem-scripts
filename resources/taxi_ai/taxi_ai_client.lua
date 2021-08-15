@@ -26,15 +26,14 @@ end)
 function SpawnTaxi(coords)
     -- different ped?
     local taxiDriver = 's_m_o_busker_01'
-    local vector, h = GetTaxiSpawnPoint(coords)
-    local sX, sY, sZ = table.unpack(vector)
+    local spawn, h = GetTaxiSpawnPoint(coords)
 
     RequestModel(carModel)
     while not HasModelLoaded(carModel) do
         Wait(0)
     end
 
-    local taxi = CreateVehicle(carModel, sX, sY, sZ, h, true, false)
+    local taxi = CreateVehicle(carModel, spawn.x, spawn.y, spawn.z, h, true, false)
     SetEntityInvincible(taxi, true)
     SetVehicleOnGroundProperly(taxi)
 
@@ -48,6 +47,8 @@ function SpawnTaxi(coords)
     SetModelAsNoLongerNeeded(taxiDriver)
     Citizen.Wait(1000)
     SetEntityInvincible(taskveh, false) 
+
+    log('taxi spawned at ' .. spawn)
 
     return taxi, taxiPed
 end
@@ -91,12 +92,8 @@ function StartAiTaxi()
     SetWaypointOff()
     -- spawn
     local taxi, taxiPed = SpawnTaxi(pcoords)
-    log('taxi spawned at ' .. pcoords)
-
     circle = pcoords
-    TriggerEvent('chat:addMessage', {
-        args = { 'Pick up at ' .. pcoords.x .. ', ' .. pcoords.y .. ', ' .. pcoords.z  }
-    })
+    log('Pick up at ' .. pcoords)
     TaskVehicleDriveToCoord(taxiPed, taxi, pcoords.x, pcoords.y, pcoords.z, 10.0, 1, carModel, 786603, 10.0, true)
     SetPedKeepTask(taxiPed, true)
     -- pick up
@@ -146,7 +143,7 @@ function StartAiTaxi()
 
         if inTaxi and not IsPedInVehicle(playerPed, taxi, true) then
             if enroute then
-                log('got out')
+                log('got out: pay fare')
                 TriggerServerEvent('ai_taxi:payCab')
             else
                 log('got out with no fare')
@@ -158,7 +155,6 @@ function StartAiTaxi()
 
         if GetVehiclePedIsIn(playerPed, false) == taxi then
             Wait(1000)
-            log(count)
 
             if not inTaxi then
                 inTaxi = true
@@ -202,6 +198,7 @@ function StartAiTaxi()
 
                     count = 0
                     TriggerServerEvent('ai_taxi:payCab')
+                    log('pay fare')
                 end
 
                 if not IsWaypointActive() then
