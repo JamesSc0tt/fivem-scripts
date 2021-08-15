@@ -8,4 +8,6 @@ version '0.0.01'
 
 resource_type 'gameplay' { name = 'Lets player get carted around the city' }
 
-client_script 'taxi_client.lua'
+client_script 'taxi_ai_client.lua'
+
+server_script 'taxi_ai_server.lua'

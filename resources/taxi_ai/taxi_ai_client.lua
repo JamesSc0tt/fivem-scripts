@@ -144,9 +144,15 @@ function StartAiTaxi()
             end
         end
 
-        if enroute and inTaxi and not IsPedSittingInVehicle(playerPed, taxi) then
+        if inTaxi and not IsPedInVehicle(playerPed, taxi, true) then
+            if enroute then
+                log('got out')
+                TriggerServerEvent('ai_taxi:payCab')
+            else
+                log('got out with no fare')
+            end
+
             count = 0
-            log('got out')
             break
         end
 
@@ -195,6 +201,7 @@ function StartAiTaxi()
                     end
 
                     count = 0
+                    TriggerServerEvent('ai_taxi:payCab')
                 end
 
                 if not IsWaypointActive() then
